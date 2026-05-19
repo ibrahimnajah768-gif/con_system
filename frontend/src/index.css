@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* 1. إعدادات الألوان والمتغيرات الأساسية */
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #f8fafc; /* خلفية أفتح وأكثر راحة */
+  --border: #e5e4e7;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 2. دعم الوضع الليلي */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #111C44; /* لون خلفية يتماشى مع الـ Sidebar */
+    --border: #2e303a;
+    --code-bg: #1f2028;
+    --accent: #c084fc;
+    --social-bg: rgba(47, 48, 58, 0.5);
+  }
+}
+
+/* 3. تصفير الهوامش وضبط العرض الكامل (إصلاح الخلل الرئيسي) */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden; /* يمنع ظهور سكرول جانبي */
+}
+
+/* إصلاح الـ Root ليأخذ كامل مساحة المتصفح */
+#root {
+  width: 100vw;       /* عرض كامل الشاشة */
+  min-height: 100vh;  /* طول كامل الشاشة */
+  margin: 0;          /* إلغاء الـ auto القديم */
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  text-align: right;  /* لضمان التوافق مع العربي */
+}
+
+/* 4. تنسيقات النصوص المكبرة (حسب طلبك) */
+h1, h2, h3, h4 {
+  font-family: var(--heading);
+  color: var(--text-h);
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem); /* خط مرن يكبر ويصغر حسب الشاشة */
+  font-weight: 900;
+}
+
+h2 {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+p {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* 5. تنسيقات إضافية لضمان عدم خروج المحتوى */
+* {
+  box-sizing: border-box;
+}
+
+/* تحسين شكل الجداول والسكرول */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* كلاسات مساعدة للنمو السريع */
+.full-bleed {
+  width: 100%;
+  max-width: 100% !important;
+}

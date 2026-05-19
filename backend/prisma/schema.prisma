@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  branches  Branch[]
+  createdAt DateTime @default(now())
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String
+  location  String?
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+  projects  Project[]
+  users     User[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("admin")
+  branchId  Int?
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Employee {
+  id         Int      @id @default(autoincrement())
+  name       String
+  position   String
+  salary     Float    // الراتب الشهري الكلي
+  phone      String?
+  branchId   Int
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  // الجديد: الحضور والرواتب
+  attendances Attendance[]
+  salaryPayments SalaryPayment[]
+  
+  createdAt  DateTime @default(now())
+}
+
+// جدول الحضور اليومي
+model Attendance {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @default(now())
+  status     String   // "حاضر" أو "غائب"
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+// جدول دفعات الرواتب (أسبوعية أو شهرية)
+model SalaryPayment {
+  id         Int      @id @default(autoincrement())
+  amount     Float    // المبلغ المدفوع (قسط من الراتب)
+  date       DateTime @default(now())
+  type       String   // "أسبوعي" أو "شهري"
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  name        String
+  client      String
+  budget      Float
+  status      String    @default("قيد التنفيذ")
+  notes       String?   
+  branchId    Int
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  payments    Payment[] 
+  expenses    Expense[] 
+  materials   Material[]
+  attachments Attachment[]
+  createdAt   DateTime  @default(now())
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  amount    Float    
+  date      DateTime @default(now())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  description String   
+  amount      Float    
+  date        DateTime @default(now())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id          Int       @id @default(autoincrement())
+  name        String   
+  quantity    Float    
+  unit        String   
+  price       Float    
+  date        DateTime  @default(now())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplierId  Int?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+}
+
+model Attachment {
+  id        Int      @id @default(autoincrement())
+  name      String   
+  url       String   
+  fileType  String?  
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  name      String   
+  phone     String?  
+  address   String?  
+  materials Material[] 
+  createdAt DateTime @default(now())
+}
