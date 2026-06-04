@@ -181,29 +181,19 @@ app.get('/api/projects', async (req, res) => {
 // كود الأرشفة في السيرفر (Node.js + Express)
 // كود الأرشفة المصحح (يجب استبدال القديم بهذا)
 // --- كود الأرشفة المصلح في السيرفر ---
+// --- كود الأرشفة المصلح 100% لـ Prisma ---
 app.patch('/api/project/:id/archive', async (req, res) => {
     const { id } = req.params;
     try {
-        // 1. البحث عن المشروع للتأكد من وجوده ومعرفة حالته الحالية
-        const project = await prisma.project.findUnique({
-            where: { id: parseInt(id) }
-        });
+        const project = await prisma.project.findUnique({ where: { id: parseInt(id) } });
+        if (!project) return res.status(404).json({ error: "المشروع غير موجود" });
 
-        if (!project) {
-            return res.status(404).json({ error: "المشروع غير موجود" });
-        }
-
-        // 2. تحديث حالة الأرشفة (عكس الحالة الحالية)
-        const updatedProject = await prisma.project.update({
+        const updated = await prisma.project.update({
             where: { id: parseInt(id) },
             data: { isArchived: !project.isArchived }
         });
-
-        res.json(updatedProject);
-    } catch (error) {
-        console.error("خطأ في الأرشفة:", error);
-        res.status(500).json({ error: "فشل في تحديث حالة الأرشفة" });
-    }
+        res.json(updated);
+    } catch (err) { res.status(500).json({ error: "خطأ في السيرفر" }); }
 });
 app.post('/api/project', async (req, res) => {
     const { name, client, budget, branchId } = req.body;
@@ -343,7 +333,8 @@ app.delete('/api/suppliers/:id', async (req, res) => {
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).send('لم يتم اختيار ملف');
-        const url = `http://localhost:3000/uploads/${req.file.filename}`;
+        const host = req.get('host');
+        const url = `https://${host}/uploads/${req.file.filename}`;
         const attachment = await prisma.attachment.create({
             data: { name: req.body.name || req.file.originalname, url: url, fileType: req.file.mimetype, projectId: parseInt(req.body.projectId) }
         });

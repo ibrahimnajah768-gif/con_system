@@ -5,6 +5,7 @@ import html2pdf from 'html2pdf.js'
 const API_BASE = 'https://consystem-production.up.railway.app';
 
 function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [officeExpenses, setOfficeExpenses] = useState([]);
   const [offExpForm, setOffExpForm] = useState({ description: '', amount: '' });
   // ==========================================
@@ -187,13 +188,7 @@ const handleLogout = () => {
     setIsAdminUnlocked(false); // قفل الأقسام الإدارية
   };
   const deleteItem = async (type, id) => {
-    if (!isAdminUnlocked) {
-        const pin = window.prompt("للحذف، أدخل الرمز:");
-        if (pin !== "1234") return alert("فشل التحقق");
-        setIsAdminUnlocked(true);
-    }
-    if (!window.confirm('⚠️ حذف نهائي؟')) return;
-    // التعديل: أضفنا API_BASE
+    if (!window.confirm('⚠️ هل أنت متأكد من الحذف النهائي؟')) return;
     await fetch(`${API_BASE}/api/${type}/${id}`, { method: 'DELETE' });
     fetchData();
 };
@@ -525,60 +520,100 @@ const startEditEmployee = (emp) => {
   // ==========================================
   // --- واجهة النظام الرئيسية (Dashboard) ---
   // ==========================================
-  return (
-    <div className="min-h-screen bg-[#F4F7FE] flex font-sans text-right text-slate-800 w-full overflow-x-hidden" dir="rtl">
-      
-      {/* 1. Sidebar */}
-      <aside className="w-20 lg:w-72 bg-[#111C44] text-white flex flex-col sticky top-0 h-screen shadow-2xl z-40 overflow-hidden">
-  
-  {/* الجزء العلوي (اللوجو) - ثابت لا يتحرك */}
-  <div className="p-8 text-center shrink-0">
-      <div className="w-16 h-16 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg">🏗️</div>
-  </div>
-
-  {/* القائمة الجانبية - هذا الجزء هو الذي سيحتوي على السلايدر */}
-  <nav className="flex-1 px-4 space-y-4 mt-2 overflow-y-auto custom-scrollbar">
-  {[
-    { id: 'dashboard', label: 'الرئيسية', icon: '🏠', admin: true },
-    { id: 'projects', label: 'المشاريع والمالية', icon: '📊', admin: false },
-    { id: 'employees', label: 'الكادر الوظيفي', icon: '👥', admin: false },
-    { id: 'branches', label: 'فروع الشركة', icon: '🏢', admin: true },
-    { id: 'suppliers', label: 'الموردين والديون', icon: '🤝', admin: false },
-    { id: 'finances', label: 'كشف الأرباح الكلي', icon: '💰', admin: true },
-    { id: 'archive', label: 'أرشيف المشاريع', icon: '📁', admin: true },
-  ].map(item => (
-    <button 
-      key={item.id} 
-      onClick={() => item.admin ? checkAdminPin(item.id) : setTab(item.id)} 
-      className={`
-        w-full flex items-center justify-between gap-4 p-5 rounded-2xl transition-all duration-300 relative group
-        ${tab === item.id ? 'bg-indigo-600 shadow-xl scale-105 font-black' : 'text-slate-400 hover:bg-slate-800'}
-      `}
-    >
-      <div className="flex items-center gap-4">
-        <span className="text-2xl">{item.icon}</span>
-        <span className="hidden lg:block font-bold text-lg">{item.label}</span>
+ return (
+  <div className={`min-h-screen flex flex-col lg:flex-row font-sans transition-all duration-500 ${isDarkMode ? 'bg-[#0f172a] text-white' : 'bg-[#F4F7FE] text-slate-800'}`} dir="rtl">
+    
+    {/* --- 1. واجهة الموبايل (AppBar علوي ثابت) --- */}
+    <header className={`lg:hidden sticky top-0 z-50 shadow-2xl transition-all ${isDarkMode ? 'bg-[#1e293b] border-b border-white/5' : 'bg-[#111C44] text-white'}`}>
+      <div className="p-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl bg-indigo-600 p-2 rounded-lg shadow-lg">🏗️</span>
+          <h1 className="text-lg font-black italic tracking-tighter">نظام المِعمار v3</h1>
+        </div>
+        
+        {/* زر التبديل بين الليلي والنهاري للموبايل */}
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)} 
+          className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-xl text-xl active:scale-90 transition-all"
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
       </div>
 
-      {/* --- إضافة أيقونة القفل الصغير --- */}
-      {item.admin && !isAdminUnlocked && (
-        <div className="flex items-center justify-center w-6 h-6 bg-red-500/20 border border-red-500/50 rounded-lg animate-pulse shadow-sm shadow-red-500/20">
-          <span className="text-[10px]">🔒</span>
-        </div>
-      )}
-      {/* ------------------------------- */}
-    </button>
-  ))}
-</nav>
+      {/* شريط التنقل الأفقي (سلايدر أيقونات) */}
+      <nav className="flex overflow-x-auto gap-2 px-4 pb-4 no-scrollbar">
+        {[
+          { id: 'dashboard', label: 'الرئيسية', icon: '🏠', admin: true },
+          { id: 'projects', label: 'المشاريع', icon: '📊', admin: false },
+          { id: 'employees', label: 'الكادر', icon: '👥', admin: false },
+          { id: 'branches', label: 'الفروع', icon: '🏢', admin: true },
+          { id: 'suppliers', label: 'الموردين', icon: '🤝', admin: false },
+          { id: 'finances', label: 'الأرباح', icon: '💰', admin: true },
+          { id: 'archive', label: 'الأرشيف', icon: '📁', admin: true },
+        ].map(item => (
+          <button 
+            key={item.id} 
+            onClick={() => item.admin ? checkAdminPin(item.id) : setTab(item.id)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl whitespace-nowrap text-xs font-black transition-all relative ${tab === item.id ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-white/5 text-slate-300'}`}
+          >
+            <span>{item.icon}</span>
+            {item.label}
+            {item.admin && !isAdminUnlocked && <span className="text-[8px] absolute -top-1 -right-1 bg-red-500 p-1 rounded-full shadow-lg">🔒</span>}
+          </button>
+        ))}
+      </nav>
+    </header>
 
-  {/* الجزء السفلي (تسجيل الخروج) - ثابت في مكانه */}
-  <div className="p-4 shrink-0 border-t border-slate-800">
-      <button onClick={handleLogout} className="w-full p-4 bg-red-500/10 text-red-500 rounded-2xl font-black hover:bg-red-500 hover:text-white transition-all text-center">
-        <span className="lg:hidden text-xl">🚪</span>
-        <span className="hidden lg:block text-sm">تسجيل خروج</span>
-      </button>
-  </div>
-</aside>
+    {/* --- 2. واجهة اللابتوب (Sidebar جانبي) --- */}
+    <aside className={`hidden lg:flex w-72 flex-col sticky top-0 h-screen shadow-2xl z-40 overflow-hidden transition-all ${isDarkMode ? 'bg-[#1e293b] border-l border-white/5' : 'bg-[#111C44] text-white'}`}>
+      <div className="p-8 text-center shrink-0">
+          <div className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-2xl shadow-indigo-500/20 mb-4 transform hover:rotate-12 transition-transform cursor-pointer">🏗️</div>
+          <h1 className="text-2xl font-black italic tracking-tighter">نظام المِعمار v3</h1>
+          
+          {/* زر التبديل للوضع الليلي في اللابتوب */}
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="mt-6 w-full flex items-center justify-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all font-bold text-xs"
+          >
+            {isDarkMode ? 'الوضع النهاري ☀️' : 'الوضع الليلي 🌙'}
+          </button>
+      </div>
+
+      <nav className="flex-1 px-4 space-y-3 mt-4 overflow-y-auto custom-scrollbar">
+        {[
+          { id: 'dashboard', label: 'الرئيسية', icon: '🏠', admin: true },
+          { id: 'projects', label: 'المشاريع والمالية', icon: '📊', admin: false },
+          { id: 'employees', label: 'الكادر الوظيفي', icon: '👥', admin: false },
+          { id: 'branches', label: 'فروع الشركة', icon: '🏢', admin: true },
+          { id: 'suppliers', label: 'الموردين والديون', icon: '🤝', admin: false },
+          { id: 'finances', label: 'كشف الأرباح الكلي', icon: '💰', admin: true },
+          { id: 'archive', label: 'أرشيف المشاريع', icon: '📁', admin: true },
+        ].map(item => (
+          <button 
+            key={item.id} 
+            onClick={() => item.admin ? checkAdminPin(item.id) : setTab(item.id)} 
+            className={`w-full flex items-center justify-between gap-4 p-4 rounded-2xl transition-all duration-300 group ${tab === item.id ? 'bg-indigo-600 shadow-xl scale-105 font-black' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+          >
+            <div className="flex items-center gap-4">
+              <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
+              <span className="font-bold text-lg">{item.label}</span>
+            </div>
+            {item.admin && !isAdminUnlocked && (
+              <div className="flex items-center justify-center w-6 h-6 bg-red-500/20 border border-red-500/50 rounded-lg animate-pulse">
+                <span className="text-[10px]">🔒</span>
+              </div>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      <div className="p-6 shrink-0 border-t border-white/5">
+          <button onClick={handleLogout} className="w-full p-4 bg-red-500/10 text-red-500 rounded-2xl font-black hover:bg-red-500 hover:text-white transition-all text-center flex items-center justify-center gap-3">
+            <span className="text-xl">🚪</span>
+            <span>تسجيل خروج</span>
+          </button>
+      </div>
+    </aside>
 
       {/* 2. Main Content */}
       <main className="flex-1 flex flex-col min-w-0 text-right">
@@ -1143,29 +1178,28 @@ const startEditEmployee = (emp) => {
 {user?.role === 'admin' && (
    <button 
     onClick={async() => { 
-        if(window.confirm('هل تريد نقل هذا المشروع إلى الأرشيف؟ سيختفي من القائمة الرئيسية.')){
-            try {
-                const res = await fetch(`${API_BASE}/api/project/${selectedProject.id}/archive`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // إرسال التوكن لضمان الصلاحية
-                    }
-                });
-
-                if (res.ok) {
-                    alert("✅ تم نقل المشروع للأرشيف بنجاح");
-                    setSelectedProject(null); // غلق نافذة المشروع
-                    fetchData(); // تحديث القائمة الرئيسية فوراً
-                } else {
-                    const errData = await res.json();
-                    alert("❌ فشل الأرشفة: " + (errData.error || "خطأ في السيرفر"));
+    if(window.confirm('هل تريد نقل هذا المشروع إلى الأرشيف؟')){
+        try {
+            const res = await fetch(`${API_BASE}/api/project/${selectedProject.id}/archive`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
                 }
-            } catch (err) {
-                alert("❌ حدث خطأ في الاتصال بالسيرفر");
+            });
+
+            if (res.ok) {
+                alert("✅ تمت الأرشفة بنجاح");
+                setSelectedProject(null); // غلق نافذة المشروع
+                fetchData(); // تحديث القائمة فوراً
+            } else {
+                alert("❌ فشل الأرشفة من السيرفر");
             }
-        } 
-    }} 
+        } catch (err) {
+            alert("❌ خطأ اتصال بالإنترنت");
+        }
+    } 
+}}
     className="w-full p-4 rounded-2xl bg-slate-200 text-slate-700 font-black text-xs mt-4 hover:bg-slate-300 transition-all"
 >
     📁 نقل المشروع إلى الأرشيف

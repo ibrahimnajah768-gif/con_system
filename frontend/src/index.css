@@ -132,3 +132,20 @@ p {
   scrollbar-width: thin;
   scrollbar-color: #312e81 transparent;
 }
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+/* أضف هذا في index.css */
+.dark-mode {
+  background-color: #0f172a !important;
+  color: white !important;
+}
+.dark-mode .bg-white {
+  background-color: #1e293b !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.05) !important;
+}
