@@ -11,20 +11,20 @@ model Company {
   id        Int      @id @default(autoincrement())
   name      String
   address   String?
-  branches  Branch[]
   createdAt DateTime @default(now())
+  branches  Branch[]
 }
 
 model Branch {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
   location  String?
   companyId Int
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employees Employee[]
   projects  Project[]
   users     User[]
-  createdAt DateTime @default(now())
 }
 
 model User {
@@ -34,64 +34,80 @@ model User {
   password  String
   role      String   @default("admin")
   branchId  Int?
-  branch    Branch?  @relation(fields: [branchId], references: [id])
   createdAt DateTime @default(now())
+  branch    Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Employee {
-  id         Int      @id @default(autoincrement())
-  name       String
-  position   String
-  salary     Float    // الراتب الشهري الكلي
-  phone      String?
-  branchId   Int
-  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  
-  // الجديد: الحضور والرواتب
-  attendances Attendance[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  position       String
+  salary         Float
+  phone          String?
+  branchId       Int
+  createdAt      DateTime        @default(now())
+  attendances    Attendance[]
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   salaryPayments SalaryPayment[]
-  
-  createdAt  DateTime @default(now())
 }
 
-// جدول الحضور اليومي
 model Attendance {
   id         Int      @id @default(autoincrement())
-  date       DateTime @default(now())
-  status     String   // "حاضر" أو "غائب"
   employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
 }
 
-// جدول دفعات الرواتب (أسبوعية أو شهرية)
 model SalaryPayment {
   id         Int      @id @default(autoincrement())
-  amount     Float    // المبلغ المدفوع (قسط من الراتب)
+  amount     Float
   date       DateTime @default(now())
-  type       String   // "أسبوعي" أو "شهري"
+  type       String   @default("أسبوعي")
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model Project {
-  id          Int       @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
   client      String
   budget      Float
-  status      String    @default("قيد التنفيذ")
-  notes       String?   
+  status      String       @default("قيد التنفيذ")
+  isArchived  Boolean      @default(false)
+  notes       String?
   branchId    Int
-  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  payments    Payment[] 
-  expenses    Expense[] 
-  materials   Material[]
+  createdAt   DateTime     @default(now())
   attachments Attachment[]
-  createdAt   DateTime  @default(now())
+  expenses    Expense[]
+  materials   Material[]
+  payments    Payment[]
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+}
+
+model Task {
+  id          Int     @id @default(autoincrement())
+  description String
+  percentage  Int
+  isCompleted Boolean @default(false)
+  projectId   Int
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model Payment {
   id        Int      @id @default(autoincrement())
-  amount    Float    
+  amount    Float
   date      DateTime @default(now())
   projectId Int
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -99,41 +115,48 @@ model Payment {
 
 model Expense {
   id          Int      @id @default(autoincrement())
-  description String   
-  amount      Float    
+  description String
+  amount      Float
   date        DateTime @default(now())
   projectId   Int
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Material {
-  id          Int       @id @default(autoincrement())
-  name        String   
-  quantity    Float    
-  unit        String   
-  price       Float    
-  date        DateTime  @default(now())
-  projectId   Int
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  supplierId  Int?
-  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  id         Int       @id @default(autoincrement())
+  name       String
+  quantity   Float
+  unit       String
+  price      Float
+  date       DateTime  @default(now())
+  projectId  Int
+  supplierId Int?
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
 }
 
 model Attachment {
   id        Int      @id @default(autoincrement())
-  name      String   
-  url       String   
-  fileType  String?  
+  name      String
+  url       String
+  fileType  String?
   projectId Int
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Supplier {
-  id        Int      @id @default(autoincrement())
-  name      String   
-  phone     String?  
-  address   String?  
-  materials Material[] 
-  createdAt DateTime @default(now())
+  id        Int        @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime   @default(now())
+  materials Material[]
+}
+
+model OfficeExpense {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Float
+  date        DateTime @default(now())
 }

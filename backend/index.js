@@ -11,7 +11,25 @@ const jwt = require('jsonwebtoken'); // مكتبة التوكن
 const prisma = new PrismaClient();
 const app = express();
 
-app.use(cors());
+// 1. تحديث الـ CORS للسماح للموبايل
+// السماح الشامل لكل المصادر لضمان عمل تطبيق الموبايل
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+// أضف هذا السطر تحت app.use(cors()) مباشرة
+app.use((req, res, next) => {
+    console.log(`🚀 طلب واصل من جهاز: ${req.ip} للمسار: ${req.url}`);
+    next();
+});
+
+// 2. أضف هذا الكود (المراقب) تحت سطر الـ CORS مباشرة
+// وظيفته: يطبع لك في الشاشة السوداء أي جهاز يحاول الاتصال بك هسة
+app.use((req, res, next) => {
+    console.log(`📡 طلب جديد من: ${req.ip} - المسار: ${req.url}`);
+    next();
+});
 app.use(express.json());
 
 // --- إعداد مجلد المرفقات ---
@@ -47,6 +65,19 @@ app.post('/api/auth/register', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: "البريد الإلكتروني مستخدم بالفعل أو حدث خطأ" });
     }
+});
+app.get('/api/officeexpenses', async (req, res) => {
+  try {
+    const officeExpenses = await prisma.officeExpense.findMany();
+
+    res.json(officeExpenses);
+  } catch (error) {
+    console.error('Office expense error:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch office expenses'
+    });
+  }
 });
 
 // 2. رابط تسجيل الدخول (Login)
@@ -100,9 +131,31 @@ app.get('/api/branches', async (req, res) => {
 });
 
 app.post('/api/branch', async (req, res) => {
-    const { name, location, companyId } = req.body;
-    const branch = await prisma.branch.create({ data: { name, location, companyId: parseInt(companyId) } });
-    res.json(branch);
+    const { name, location } = req.body;
+    try {
+        // 1. البحث عن أول شركة موجودة
+        let company = await prisma.company.findFirst();
+        
+        // 2. إذا كانت قاعدة البيانات صفر (بعد الـ Reset)، ننشئ شركة فوراً
+        if (!company) {
+            company = await prisma.company.create({
+                data: { name: "شركة المِعمار للمقاولات", address: "المقر الرئيسي" }
+            });
+        }
+
+        // 3. إنشاء الفرع وربطه بالشركة
+        const branch = await prisma.branch.create({ 
+            data: { 
+                name, 
+                location, 
+                companyId: company.id // نستخدم ID الشركة التي وجدناها أو أنشأناها
+            } 
+        });
+        res.json(branch);
+    } catch (error) {
+        console.error("خطأ:", error);
+        res.status(500).json({ error: "حدث خطأ في السيرفر" });
+    }
 });
 
 app.delete('/api/branch/:id', async (req, res) => {
@@ -117,14 +170,41 @@ app.get('/api/projects', async (req, res) => {
             branch: true, 
             payments: true, 
             expenses: true, 
-            materials: { include: { supplier: true } }, // تم التعديل لجلب المورد مع المادة
-            attachments: true 
+            materials: { include: { supplier: true } }, 
+            attachments: true,
+            tasks: true // [إضافة] جلب المهام مع المشروع
         },
         orderBy: { createdAt: 'desc' }
     });
     res.json(projects);
 });
+// كود الأرشفة في السيرفر (Node.js + Express)
+// كود الأرشفة المصحح (يجب استبدال القديم بهذا)
+// --- كود الأرشفة المصلح في السيرفر ---
+app.patch('/api/project/:id/archive', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // 1. البحث عن المشروع للتأكد من وجوده ومعرفة حالته الحالية
+        const project = await prisma.project.findUnique({
+            where: { id: parseInt(id) }
+        });
 
+        if (!project) {
+            return res.status(404).json({ error: "المشروع غير موجود" });
+        }
+
+        // 2. تحديث حالة الأرشفة (عكس الحالة الحالية)
+        const updatedProject = await prisma.project.update({
+            where: { id: parseInt(id) },
+            data: { isArchived: !project.isArchived }
+        });
+
+        res.json(updatedProject);
+    } catch (error) {
+        console.error("خطأ في الأرشفة:", error);
+        res.status(500).json({ error: "فشل في تحديث حالة الأرشفة" });
+    }
+});
 app.post('/api/project', async (req, res) => {
     const { name, client, budget, branchId } = req.body;
     const project = await prisma.project.create({
@@ -159,17 +239,31 @@ app.post('/api/payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- تعديل مسار المصاريف لإضافة إشعار ذكي في حال تجاوز الميزانية ---
 app.post('/api/expense', async (req, res) => {
     const { description, amount, projectId } = req.body;
     try {
         const expense = await prisma.expense.create({
-            data: { description: req.body.description, amount: parseFloat(req.body.amount), projectId: parseInt(req.body.projectId) }
+            data: { description, amount: parseFloat(amount), projectId: parseInt(projectId) }
         });
+
+        // [ذكاء النظام] فحص الميزانية
+        const project = await prisma.project.findUnique({
+            where: { id: parseInt(projectId) },
+            include: { expenses: true, materials: true }
+        });
+        const totalSpent = project.expenses.reduce((s, e) => s + e.amount, 0) + project.materials.reduce((s, m) => s + m.price, 0);
+        if (totalSpent > project.budget) {
+            await prisma.notification.create({
+                data: { message: `⚠️ المشروع (${project.name}) تجاوز الميزانية المحددة!`, type: 'danger' }
+            });
+        }
+
         res.json(expense);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- المواد (تم التعديل لإضافة ربط المورد) ---
+// --- المواد (مع فحص الميزانية أيضاً) ---
 app.post('/api/material', async (req, res) => {
     const { name, quantity, unit, price, projectId, supplierId } = req.body;
     try {
@@ -180,9 +274,22 @@ app.post('/api/material', async (req, res) => {
                 unit, 
                 price: parseFloat(price), 
                 projectId: parseInt(projectId),
-                supplierId: supplierId ? parseInt(supplierId) : null // ربط المادة بالمورد إذا وجد
+                supplierId: supplierId ? parseInt(supplierId) : null 
             }
         });
+
+        // [ذكاء النظام] فحص الميزانية
+        const project = await prisma.project.findUnique({
+            where: { id: parseInt(projectId) },
+            include: { expenses: true, materials: true }
+        });
+        const totalSpent = project.expenses.reduce((s, e) => s + e.amount, 0) + project.materials.reduce((s, m) => s + m.price, 0);
+        if (totalSpent > project.budget) {
+            await prisma.notification.create({
+                data: { message: `⚠️ تم شراء مواد جعلت المشروع (${project.name}) يتجاوز ميزانيته!`, type: 'danger' }
+            });
+        }
+
         res.json(material);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -207,10 +314,10 @@ app.delete('/api/material/:id', async (req, res) => {
     res.json({ ok: true });
 });
 
-// --- الموردين (جديد) ---
+// --- الموردين ---
 app.get('/api/suppliers', async (req, res) => {
     const suppliers = await prisma.supplier.findMany({
-        include: { materials: true } // جلب المواد التابعة لكل مورد لحساب الديون
+        include: { materials: true } 
     });
     res.json(suppliers);
 });
@@ -257,66 +364,57 @@ app.delete('/api/attachment/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ==========================================
-// --- الجديد: نظام الحضور والرواتب (HR) ---
-// ==========================================
-
-// 1. جلب الموظفين (تعديل الجلب ليشمل الحضور والرواتب)
+// --- نظام الحضور والرواتب ---
 app.get('/api/employees', async (req, res) => {
     const employees = await prisma.employee.findMany({ 
-        include: { 
-            branch: true,
-            attendances: true,
-            salaryPayments: true
-        },
+        include: { branch: true, attendances: true, salaryPayments: true },
         orderBy: { createdAt: 'desc' }
     });
     res.json(employees);
 });
 
-// 2. تسجيل الحضور (حاضر / غائب)
 app.post('/api/attendance', async (req, res) => {
-    const { employeeId, status } = req.body;
+    const { employeeId, status, date } = req.body; // أضفنا التاريخ هنا
     try {
-        const attendance = await prisma.attendance.create({
-            data: { employeeId: parseInt(employeeId), status }
+        // تحويل التاريخ لبداية اليوم لضمان عدم التكرار في نفس اليوم
+        const attendanceDate = date ? new Date(date) : new Date();
+        attendanceDate.setHours(0,0,0,0);
+
+        // تحديث إذا كان موجوداً أو إنشاء سجل جديد
+        const attendance = await prisma.attendance.upsert({
+            where: {
+                employeeId_date: { // تأكد من وجود هذا الـ unique constraint في schema.prisma
+                    employeeId: parseInt(employeeId),
+                    date: attendanceDate
+                }
+            },
+            update: { status },
+            create: { employeeId: parseInt(employeeId), status, date: attendanceDate }
         });
         res.json(attendance);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 3. تسجيل دفعة راتب (أسبوعي / شهري)
 app.post('/api/salary-payment', async (req, res) => {
     const { employeeId, amount, type } = req.body;
     try {
         const payment = await prisma.salaryPayment.create({
-            data: { 
-                employeeId: parseInt(employeeId), 
-                amount: parseFloat(amount), 
-                type: type || "أسبوعي" 
-            }
+            data: { employeeId: parseInt(employeeId), amount: parseFloat(amount), type: type || "أسبوعي" }
         });
         res.json(payment);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 4. تعديل بيانات موظف (Patch)
 app.patch('/api/employee/:id', async (req, res) => {
     try {
         const data = await prisma.employee.update({
             where: { id: parseInt(req.params.id) },
-            data: { 
-                name: req.body.name, 
-                position: req.body.position, 
-                salary: parseFloat(req.body.salary),
-                branchId: parseInt(req.body.branchId)
-            }
+            data: { name: req.body.name, position: req.body.position, salary: parseFloat(req.body.salary), branchId: parseInt(req.body.branchId) }
         });
         res.json(data);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- (إضافة الموظف الأصلية كما هي) ---
 app.post('/api/employee', async (req, res) => {
     const employee = await prisma.employee.create({
         data: { name: req.body.name, position: req.body.position, salary: parseFloat(req.body.salary), branchId: parseInt(req.body.branchId) }
@@ -329,7 +427,56 @@ app.delete('/api/employee/:id', async (req, res) => {
     res.json({ ok: true });
 });
 
+// ==========================================
+// --- [جديد] مسارات المهام والإشعارات ---
+// ==========================================
+
+// إضافة مهمة جديدة لمشروع
+app.post('/api/tasks', async (req, res) => {
+    const { description, percentage, projectId } = req.body;
+    try {
+        const task = await prisma.task.create({
+            data: { description, percentage: parseInt(percentage), projectId: parseInt(projectId) }
+        });
+        res.json(task);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// تحديث حالة المهمة (تم/لم يتم)
+app.patch('/api/tasks/:id', async (req, res) => {
+    const task = await prisma.task.findUnique({ where: { id: parseInt(req.params.id) } });
+    const updatedTask = await prisma.task.update({
+        where: { id: parseInt(req.params.id) },
+        data: { isCompleted: !task.isCompleted }
+    });
+    res.json(updatedTask);
+});
+
+// حذف مهمة
+app.delete('/api/tasks/:id', async (req, res) => {
+    await prisma.task.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ ok: true });
+});
+
+// جلب الإشعارات غير المقروءة
+app.get('/api/notifications', async (req, res) => {
+    const notifs = await prisma.notification.findMany({
+        where: { isRead: false },
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json(notifs);
+});
+
+// تحديد الإشعار كمقروء
+app.patch('/api/notifications/:id', async (req, res) => {
+    await prisma.notification.update({
+        where: { id: parseInt(req.params.id) },
+        data: { isRead: true }
+    });
+    res.json({ ok: true });
+});
+
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 النظام محمي والسيرفر جاهز على http://localhost:${PORT}`);
+app.listen(PORT,"0.0.0.0", () => {
+    console.log(`🚀 النظام الذكي محمي وجاهز على http://localhost:${PORT}`);
 });

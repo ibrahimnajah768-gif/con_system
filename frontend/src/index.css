@@ -109,3 +109,26 @@ p {
   width: 100%;
   max-width: 100% !important;
 }
+/* تصميم السلايدر الخاص بالقائمة الجانبية */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px; /* عرض السلايدر */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* خلفية المسار */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #312e81; /* لون السلايدر (أزرق غامق) */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4f46e5; /* لون السلايدر عند التقريب منه */
+}
+
+/* إخفاء السلايدر في المتصفحات التي لا تدعم webkit */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #312e81 transparent;
+}
