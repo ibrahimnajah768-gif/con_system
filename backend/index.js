@@ -1,3 +1,8 @@
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
@@ -46,7 +51,7 @@ const storage = multer.diskStorage({
         cb(null, uniqueSuffix + path.extname(file.originalname));
     }
 });
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ==========================================
 // --- نظام تسجيل الدخول (AUTHENTICATION) ---
@@ -333,13 +338,34 @@ app.delete('/api/suppliers/:id', async (req, res) => {
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).send('لم يتم اختيار ملف');
-        const host = req.get('host');
-        const url = `https://${host}/uploads/${req.file.filename}`;
+
+        // رفع الملف على Supabase
+        const fileName = `${Date.now()}_${req.file.originalname}`;
+        const { data, error } = await supabase.storage
+            .from('uploads')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype
+            });
+
+        if (error) throw error;
+
+        // الحصول على الرابط العام
+        const { data: urlData } = supabase.storage
+            .from('uploads')
+            .getPublicUrl(fileName);
+
         const attachment = await prisma.attachment.create({
-            data: { name: req.body.name || req.file.originalname, url: url, fileType: req.file.mimetype, projectId: parseInt(req.body.projectId) }
+            data: {
+                name: req.body.name || req.file.originalname,
+                url: urlData.publicUrl,
+                fileType: req.file.mimetype,
+                projectId: parseInt(req.body.projectId)
+            }
         });
         res.json(attachment);
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) { 
+        res.status(500).json({ error: error.message }); 
+    }
 });
 
 app.delete('/api/attachment/:id', async (req, res) => {

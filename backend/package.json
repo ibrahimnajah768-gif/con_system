@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-     "start": "npx prisma migrate deploy && node index.js",
-     "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npx prisma migrate deploy && node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.107.0",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
