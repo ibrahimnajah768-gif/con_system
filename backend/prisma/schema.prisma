@@ -8,11 +8,22 @@ datasource db {
 }
 
 model Company {
-  id        Int      @id @default(autoincrement())
-  name      String
-  address   String?
-  createdAt DateTime @default(now())
-  branches  Branch[]
+  id              Int             @id @default(autoincrement())
+  name            String
+  address         String?
+  adminPinHash    String?
+  // مفتاح استرجاع كلمة السر - يضبطه المبرمج عند تأسيس الشركة، ومالك
+  // الشركة يقدر يغيّره لاحقاً من الإعدادات. يُستخدم فقط بنافذة "نسيت
+  // كلمة السر" للتحقق قبل السماح بتعيين كلمة سر جديدة لأي مستخدم بالشركة.
+  recoveryKeyHash String?
+  createdAt       DateTime        @default(now())
+  branches        Branch[]
+  users           User[]
+  employees       Employee[]
+  projects        Project[]
+  suppliers       Supplier[]
+  officeExpenses  OfficeExpense[]
+  notifications   Notification[]
 }
 
 model Branch {
@@ -34,8 +45,19 @@ model User {
   password  String
   role      String   @default("admin")
   branchId  Int?
+  companyId Int
   createdAt DateTime @default(now())
   branch    Branch?  @relation(fields: [branchId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // مالك الشركة (أول من أسّسها) - له كل الصلاحيات دايماً ولا أحد يقدر يقيّده.
+  // بقية المستخدمين تُفتح لهم كل الصلاحيات افتراضياً، والمالك يتحكم فيها لاحقاً.
+  isOwner   Boolean @default(false)
+  canAdd    Boolean @default(true)
+  canEdit   Boolean @default(true)
+  canDelete Boolean @default(true)
+
+  @@index([companyId])
 }
 
 model Employee {
@@ -45,10 +67,14 @@ model Employee {
   salary         Float
   phone          String?
   branchId       Int
+  companyId      Int
   createdAt      DateTime        @default(now())
   attendances    Attendance[]
   branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salaryPayments SalaryPayment[]
+
+  @@index([companyId])
 }
 
 model Attendance {
@@ -79,13 +105,17 @@ model Project {
   isArchived  Boolean      @default(false)
   notes       String?
   branchId    Int
+  companyId   Int
   createdAt   DateTime     @default(now())
   attachments Attachment[]
   expenses    Expense[]
   materials   Material[]
   payments    Payment[]
   branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tasks       Task[]
+
+  @@index([companyId])
 }
 
 model Task {
@@ -102,7 +132,11 @@ model Notification {
   message   String
   type      String   @default("info")
   isRead    Boolean  @default(false)
+  companyId Int
   createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
 }
 
 model Payment {
@@ -150,13 +184,21 @@ model Supplier {
   name      String
   phone     String?
   address   String?
+  companyId Int
   createdAt DateTime   @default(now())
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   materials Material[]
+
+  @@index([companyId])
 }
 
 model OfficeExpense {
   id          Int      @id @default(autoincrement())
   description String
   amount      Float
+  companyId   Int
   date        DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
 }

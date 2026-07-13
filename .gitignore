@@ -6,3 +6,5 @@ backend/uploads/
 frontend/dist/
 frontend/android/
 frontend/release/
+.idea/
+.claude/

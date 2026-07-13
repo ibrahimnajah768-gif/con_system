@@ -1,5 +1,10 @@
 {
   "appId": "com.meemar.app",
   "appName": "Meemar App",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    }
+  }
 }

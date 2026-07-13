@@ -28,18 +28,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 2. دعم الوضع الليلي */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #111C44; /* لون خلفية يتماشى مع الـ Sidebar */
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --social-bg: rgba(47, 48, 58, 0.5);
-  }
-}
+/* ملاحظة: تعمّدنا عدم استخدام @media (prefers-color-scheme: dark) هنا -
+   النظام عنده وضع ليلي خاص فيه يتحكم فيه المستخدم يدوياً (isDarkMode +
+   كلاس .dark-mode بالأسفل)، فلو ربطنا المتغيرات كمان بتفضيل نظام
+   التشغيل، تصير الألوان تتغيّر بصمت حسب وضع الموبايل/اللابتوب بغض النظر
+   عن اختيار المستخدم الفعلي بالتطبيق - وهذا يعمي عناصر h1-h4 بالكامل
+   على أي جهاز يكون نظام تشغيله بالوضع الليلي (كان يصير أبيض على أبيض). */
 
 /* 3. تصفير الهوامش وضبط العرض الكامل (إصلاح الخلل الرئيسي) */
 html, body {
@@ -63,25 +57,32 @@ html, body {
 }
 
 /* 4. تنسيقات النصوص المكبرة (حسب طلبك) */
-h1, h2, h3, h4 {
-  font-family: var(--heading);
-  color: var(--text-h);
-  margin: 0;
-}
+/* @layer base حتى تقدر أي كلاس لون من Tailwind (text-emerald-600 مثلاً)
+   يتغلّب على color هنا دايماً - بدون اللاير، قواعد CSS العادية غير
+   الموضوعة داخل layer تفوز تلقائياً على كلاسات Tailwind بغض النظر عن
+   الخصوصية أو ترتيب الكتابة، وهذا كان يسبب اختفاء أي رقم/عنوان بتاق
+   h1-h4 يعتمد على لون Tailwind فقط. */
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: var(--heading);
+    color: var(--text-h);
+    margin: 0;
+  }
 
-h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem); /* خط مرن يكبر ويصغر حسب الشاشة */
-  font-weight: 900;
-}
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem); /* خط مرن يكبر ويصغر حسب الشاشة */
+    font-weight: 900;
+  }
 
-h2 {
-  font-size: 28px;
-  font-weight: 800;
-}
+  h2 {
+    font-size: 28px;
+    font-weight: 800;
+  }
 
-p {
-  margin: 0;
-  font-size: 16px;
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
 }
 
 /* 5. تنسيقات إضافية لضمان عدم خروج المحتوى */
@@ -139,13 +140,95 @@ p {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-/* أضف هذا في index.css */
+/* ========================================== */
+/* الوضع الليلي - تطبيق شامل على كامل الواجهة */
+/* ========================================== */
 .dark-mode {
   background-color: #0f172a !important;
-  color: white !important;
+  color: #e2e8f0 !important;
 }
+
+/* الأسطح والبطاقات البيضاء */
 .dark-mode .bg-white {
   background-color: #1e293b !important;
-  color: white !important;
-  border-color: rgba(255,255,255,0.05) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+.dark-mode .bg-slate-50 {
+  background-color: #0f172a !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+.dark-mode .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+.dark-mode .bg-slate-100\/50 {
+  background-color: rgba(30,41,59,0.6) !important;
+}
+.dark-mode .hover\:bg-slate-50:hover,
+.dark-mode .hover\:bg-white:hover {
+  background-color: rgba(255,255,255,0.04) !important;
+}
+.dark-mode .focus\:bg-white:focus {
+  background-color: #0f172a !important;
+}
+
+/* الحدود */
+.dark-mode .border,
+.dark-mode .border-slate-50,
+.dark-mode .border-slate-100,
+.dark-mode .border-slate-200,
+.dark-mode .border-t,
+.dark-mode .border-b,
+.dark-mode .border-b-2,
+.dark-mode .border-2 {
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* النصوص */
+.dark-mode .text-slate-900,
+.dark-mode .text-slate-800,
+.dark-mode .text-slate-700 {
+  color: #f8fafc !important;
+}
+.dark-mode .text-slate-600,
+.dark-mode .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+.dark-mode .text-slate-400 {
+  color: #94a3b8 !important;
+}
+.dark-mode .text-slate-300 {
+  color: #64748b !important;
+}
+
+/* حقول الإدخال */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* الجداول */
+.dark-mode table thead {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+.dark-mode table tr {
+  background-color: transparent !important;
+}
+.dark-mode table tr:hover {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+
+/* الظلال تصبح أخف في الوضع الليلي */
+.dark-mode .shadow-sm,
+.dark-mode .shadow,
+.dark-mode .shadow-md,
+.dark-mode .shadow-xl,
+.dark-mode .shadow-2xl {
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4) !important;
 }
